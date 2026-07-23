@@ -1,0 +1,2874 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FashionCycle AI - NLP + Rule-Based</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    
+    <style>
+        /* ========== ROOT ========== */
+        :root {
+            --primary: #00b894;
+            --primary-dark: #00a381;
+            --primary-light: #55efc4;
+            --secondary: #0984e3;
+            --accent: #6c5ce7;
+            --gradient: linear-gradient(135deg, #00b894 0%, #00cec9 50%, #0984e3 100%);
+            
+            --bg: #f0f7f5;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-glass: rgba(255, 255, 255, 0.15);
+            --text: #0a1a1a;
+            --text-muted: #2d4a4a;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
+            --radius: 24px;
+            --radius-sm: 12px;
+            --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a1a1a;
+            --bg-card: rgba(255, 255, 255, 0.06);
+            --bg-glass: rgba(255, 255, 255, 0.05);
+            --text: #e8f5f5;
+            --text-muted: #a0c4c4;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: background var(--transition), color var(--transition);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+        .section-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 100px;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 16px;
+        }
+        .section-title span {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .section-desc {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            line-height: 1.8;
+        }
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-glass);
+            padding: 24px;
+            transition: all var(--transition);
+        }
+        .glass-card:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 34px;
+            background: var(--gradient);
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all var(--transition);
+            text-decoration: none;
+            box-shadow: 0 8px 24px rgba(0, 184, 148, 0.35);
+        }
+        .btn-primary:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 12px 32px rgba(0, 184, 148, 0.45); }
+
+        /* ========== NAVBAR ========== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            transition: all var(--transition);
+            background: transparent;
+        }
+        .navbar.scrolled {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        .navbar .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+        .nav-brand i {
+            font-size: 2rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color var(--transition);
+            position: relative;
+        }
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width var(--transition);
+        }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-links a:hover::after { width: 100%; }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text);
+            transition: all var(--transition);
+        }
+        .theme-toggle:hover { background: var(--primary); color: #fff; }
+
+        .cart-btn {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text);
+            transition: all var(--transition);
+        }
+        .cart-btn:hover { background: var(--primary); color: #fff; }
+        .cart-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #e17055;
+            color: #fff;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+        .hamburger span {
+            display: block;
+            width: 26px;
+            height: 2.5px;
+            background: var(--text);
+            border-radius: 4px;
+            transition: all var(--transition);
+        }
+
+        /* ========== HERO ========== */
+        .hero {
+            padding: 140px 0 60px;
+            background: var(--gradient);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+        .hero .container {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 4.5vw, 3.8rem);
+            font-weight: 900;
+            line-height: 1.08;
+        }
+        .hero h1 span { color: var(--primary-light); }
+        .hero p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 500px;
+            line-height: 1.8;
+            margin: 16px 0 24px;
+        }
+        .hero .stats {
+            display: flex;
+            gap: 40px;
+        }
+        .hero .stats div h3 { font-size: 2rem; font-weight: 800; }
+        .hero .stats div p { font-size: 0.85rem; opacity: 0.7; margin: 0; }
+
+        .hero-phone {
+            width: 100%;
+            max-width: 320px;
+            aspect-ratio: 9/19;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            margin: 0 auto;
+        }
+        .hero-phone-screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 28px;
+            background: linear-gradient(180deg, #0a1a1a 0%, #1a3a3a 100%);
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+            color: #fff;
+        }
+        .phone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+        }
+        .phone-app-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+        }
+        .phone-app-header i { font-size: 1.2rem; color: var(--primary-light); }
+        .phone-app-header span { font-weight: 700; font-size: 0.9rem; }
+
+        .phone-scan-area {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 2px dashed rgba(0, 184, 148, 0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .phone-scan-area:hover { background: rgba(0, 184, 148, 0.1); border-color: var(--primary-light); }
+        .phone-scan-area i { font-size: 2.5rem; color: var(--primary-light); margin-bottom: 8px; }
+        .phone-scan-area p { color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; }
+        .phone-scan-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .phone-result {
+            background: rgba(0, 184, 148, 0.15);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 50px;
+        }
+        .phone-result .label { font-size: 0.7rem; opacity: 0.6; }
+        .phone-result .value { font-weight: 700; font-size: 0.9rem; }
+        .phone-result .value.green { color: var(--primary-light); }
+
+        .phone-recommend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .phone-recommend .item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+        }
+        .phone-recommend .item i { font-size: 1.2rem; color: var(--primary-light); display: block; margin-bottom: 4px; }
+        .phone-recommend .item.active { background: rgba(0, 184, 148, 0.2); border: 1px solid var(--primary-light); }
+
+        /* ========== SETOR LIMBAH DENGAN NLP ========== */
+        .setor-section {
+            padding: 80px 0;
+            background: var(--bg);
+        }
+        .setor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            align-items: start;
+        }
+        .setor-form {
+            padding: 32px;
+        }
+        .setor-form .form-group {
+            margin-bottom: 20px;
+        }
+        .setor-form .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+        }
+        .setor-form .form-group .label-desc {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+        .setor-form .form-group input,
+        .setor-form .form-group select,
+        .setor-form .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .setor-form .form-group input:focus,
+        .setor-form .form-group select:focus,
+        .setor-form .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .setor-form .form-group textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+        .setor-form .form-group .file-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--bg);
+        }
+        .setor-form .form-group .file-upload:hover {
+            border-color: var(--primary);
+            background: rgba(0, 184, 148, 0.05);
+        }
+        .setor-form .form-group .file-upload i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            display: block;
+            margin-bottom: 8px;
+        }
+        .setor-form .form-group .file-upload input[type="file"] {
+            display: none;
+        }
+        .setor-form .form-group .file-upload .file-name {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* NLP Input */
+        .nlp-input-wrapper {
+            position: relative;
+        }
+        .nlp-input-wrapper .nlp-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+            font-size: 1rem;
+        }
+        .nlp-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .nlp-hint strong { color: var(--primary); }
+
+        /* Detected Type Badge */
+        .detected-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 4px;
+            animation: slideUp 0.3s ease;
+        }
+        .detected-badge.success {
+            background: rgba(0, 184, 148, 0.15);
+            color: var(--primary);
+        }
+        .detected-badge.warning {
+            background: rgba(253, 203, 110, 0.15);
+            color: #e17055;
+        }
+
+        /* Opsi Pengiriman */
+        .delivery-options {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .delivery-options .delivery-opt {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .delivery-options .delivery-opt i {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 6px;
+        }
+        .delivery-options .delivery-opt:hover {
+            border-color: var(--primary);
+        }
+        .delivery-options .delivery-opt.active {
+            border-color: var(--primary);
+            background: rgba(0, 184, 148, 0.08);
+            box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.1);
+        }
+        .delivery-options .delivery-opt .sub {
+            font-size: 0.7rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 2px;
+        }
+
+        .alamat-section {
+            padding: 16px;
+            background: rgba(0, 184, 148, 0.05);
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--primary);
+            margin-top: 8px;
+            display: none;
+        }
+        .alamat-section.show {
+            display: block;
+            animation: slideUp 0.3s ease;
+        }
+
+        .setor-form .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+        .setor-form .submit-btn:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3); }
+
+        /* Hasil Cek */
+        .setor-result {
+            padding: 32px;
+            min-height: 400px;
+        }
+        .setor-result .result-placeholder {
+            text-align: center;
+            padding: 60px 0;
+            color: var(--text-muted);
+        }
+        .setor-result .result-placeholder i {
+            font-size: 4rem;
+            opacity: 0.3;
+            display: block;
+            margin-bottom: 16px;
+        }
+        .setor-result .result-card {
+            animation: slideUp 0.5s ease;
+        }
+        .setor-result .result-card .result-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .setor-result .result-card .result-header .icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .setor-result .result-card .result-header h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .setor-result .result-card .result-header .status {
+            margin-left: auto;
+            padding: 4px 16px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .setor-result .result-card .result-header .status.verified {
+            background: rgba(0, 184, 148, 0.2);
+            color: var(--primary);
+        }
+        .setor-result .result-card .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .setor-result .result-card .result-item:last-child { border-bottom: none; }
+        .setor-result .result-card .result-item .label { color: var(--text-muted); font-size: 0.9rem; }
+        .setor-result .result-card .result-item .value { font-weight: 600; }
+        .setor-result .result-card .result-item .value.green { color: var(--primary); }
+        .setor-result .result-card .result-item .value.gold { color: #fdcb6e; }
+
+        .setor-result .result-card .nlp-info {
+            background: rgba(108, 92, 231, 0.08);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            margin: 12px 0;
+            border-left: 4px solid var(--accent);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .setor-result .result-card .nlp-info i {
+            color: var(--accent);
+            margin-right: 8px;
+        }
+
+        .setor-result .result-card .fashion-preview {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(0, 184, 148, 0.08);
+            border-radius: var(--radius-sm);
+            border-left: 4px solid var(--primary);
+        }
+        .setor-result .result-card .fashion-preview h4 {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+        .setor-result .result-card .fashion-preview .product-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .setor-result .result-card .fashion-preview .product-tags span {
+            padding: 4px 14px;
+            background: var(--bg-card);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ========== RIWAYAT ========== */
+        .riwayat-section {
+            padding: 60px 0;
+            background: var(--bg-card);
+        }
+        .riwayat-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+            font-size: 0.9rem;
+        }
+        .riwayat-table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: rgba(0, 184, 148, 0.08);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .riwayat-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .riwayat-table .status-badge {
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .riwayat-table .status-badge.selesai { background: rgba(0, 184, 148, 0.2); color: var(--primary); }
+        .riwayat-table .status-badge.dijemput { background: rgba(108, 92, 231, 0.2); color: var(--accent); }
+        .riwayat-empty {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-muted);
+        }
+        .riwayat-empty i {
+            font-size: 3rem;
+            opacity: 0.3;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        /* ========== FITUR AI ========== */
+        .features-section {
+            padding: 80px 0;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 28px;
+            margin-top: 40px;
+        }
+        .feature-card {
+            padding: 28px;
+        }
+        .feature-card .icon-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        .feature-card .ai-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            background: rgba(108, 92, 231, 0.15);
+            color: var(--accent);
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .feature-card h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+        .feature-card .subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .feature-card .demo-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+        .feature-card .demo-input:focus { outline: none; border-color: var(--primary); }
+        .feature-card .demo-btn {
+            padding: 10px 24px;
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            border-radius: 100px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .feature-card .demo-btn:hover { transform: scale(1.05); }
+        .feature-card .demo-output {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(0, 184, 148, 0.08);
+            border-left: 4px solid var(--primary);
+            min-height: 60px;
+        }
+        .feature-card .demo-output .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .feature-card .demo-output .result-item:last-child { border-bottom: none; }
+        .feature-card .demo-output .result-label { color: var(--text-muted); font-size: 0.85rem; }
+        .feature-card .demo-output .result-value { font-weight: 600; }
+
+        .waste-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .waste-options button {
+            padding: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+        .waste-options button:hover { border-color: var(--primary); background: rgba(0, 184, 148, 0.05); }
+        .waste-options button.active { border-color: var(--primary); background: rgba(0, 184, 148, 0.1); }
+
+        /* ========== MARKETPLACE ========== */
+        .marketplace-section {
+            padding: 80px 0;
+            background: var(--bg-card);
+        }
+        .marketplace-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 28px;
+            margin-top: 30px;
+        }
+        .product-card {
+            padding: 0;
+            overflow: hidden;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all var(--transition);
+        }
+        .product-card:hover { transform: translateY(-8px); box-shadow: var(--shadow); }
+
+        .product-image {
+            width: 100%;
+            aspect-ratio: 1/1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .product-image .product-bg {
+            position: absolute;
+            inset: 0;
+            background: var(--gradient);
+            opacity: 0.3;
+        }
+        .product-image .product-bg-pattern {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 40%);
+        }
+        .product-image .product-icon-wrap {
+            position: relative;
+            z-index: 2;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s;
+        }
+        .product-card:hover .product-icon-wrap {
+            transform: scale(1.05) rotate(-5deg);
+        }
+        .product-image .material-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 3;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .product-image .discount-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #e17055;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 3;
+        }
+        .product-image .waste-badge {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0, 184, 148, 0.8);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            z-index: 3;
+        }
+
+        .product-info { padding: 20px 22px 24px; }
+        .product-info .product-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+        .product-info .product-material { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+        .product-info .product-material i { color: var(--primary); margin-right: 4px; }
+        .product-info .product-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .product-info .product-rating .stars { color: #fdcb6e; font-size: 0.9rem; }
+        .product-info .product-rating .count { font-size: 0.8rem; color: var(--text-muted); }
+        .product-info .product-price { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+        .product-info .product-price .original {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            text-decoration: line-through;
+            margin-left: 10px;
+        }
+        .product-info .product-seller { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+        .product-info .product-actions { display: flex; gap: 10px; }
+        .product-info .product-actions .add-cart {
+            flex: 1;
+            padding: 10px;
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .product-info .product-actions .add-cart:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3); }
+        .product-info .product-actions .buy-now {
+            padding: 10px 20px;
+            background: var(--bg);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .product-info .product-actions .buy-now:hover { background: var(--primary); color: #fff; }
+
+        /* ========== FILTER ========== */
+        .filter-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+        }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .filter-btn {
+            padding: 8px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .filter-btn.active { background: var(--gradient); color: #fff; border-color: transparent; }
+        .search-box {
+            display: flex;
+            gap: 8px;
+            background: var(--bg-card);
+            border-radius: 100px;
+            padding: 4px 4px 4px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        .search-box:focus-within { border-color: var(--primary); }
+        .search-box input {
+            border: none;
+            background: transparent;
+            padding: 10px 0;
+            font-size: 0.95rem;
+            color: var(--text);
+            outline: none;
+            width: 200px;
+        }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box button {
+            background: var(--gradient);
+            border: none;
+            border-radius: 100px;
+            padding: 10px 20px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .search-box button:hover { transform: scale(1.05); }
+
+        /* ========== CART ========== */
+        .cart-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s;
+        }
+        .cart-overlay.active { opacity: 1; pointer-events: all; }
+        .cart-sidebar {
+            position: fixed;
+            top: 0;
+            right: -480px;
+            width: 460px;
+            height: 100vh;
+            background: var(--bg-card);
+            backdrop-filter: blur(40px);
+            z-index: 2001;
+            padding: 28px 24px;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .cart-sidebar.active { right: 0; }
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .cart-header h2 { font-size: 1.3rem; font-weight: 700; }
+        .cart-header .close-cart {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .cart-header .close-cart:hover { color: #e17055; transform: rotate(90deg); }
+        .cart-items { flex: 1; overflow-y: auto; padding: 16px 0; }
+        .cart-item {
+            display: flex;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.3s ease;
+        }
+        .cart-item .item-image {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-sm);
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+        .cart-item .item-details { flex: 1; }
+        .cart-item .item-details h4 { font-size: 0.95rem; font-weight: 600; }
+        .cart-item .item-details p { font-size: 0.85rem; color: var(--text-muted); }
+        .cart-item .item-details .price { color: var(--primary); font-weight: 700; }
+        .cart-item .item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cart-item .item-actions button {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .cart-item .item-actions button:hover { background: #e17055; color: #fff; border-color: #e17055; }
+        .cart-item .item-actions .qty { font-weight: 600; min-width: 24px; text-align: center; }
+        .cart-footer {
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .cart-footer .total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .cart-footer .checkout-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .cart-footer .checkout-btn:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(0, 184, 148, 0.3); }
+        .cart-empty { text-align: center; padding: 60px 0; color: var(--text-muted); }
+        .cart-empty i { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; display: block; }
+
+        /* ========== IMPACT ========== */
+        .impact-section {
+            padding: 80px 0;
+            background: var(--gradient);
+            color: #fff;
+        }
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+        .impact-item {
+            text-align: center;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sm);
+            backdrop-filter: blur(12px);
+        }
+        .impact-item .number { font-size: 2.8rem; font-weight: 900; display: block; }
+        .impact-item .label { font-size: 0.9rem; opacity: 0.8; }
+        .impact-item .update-btn {
+            margin-top: 12px;
+            padding: 6px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 100px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .impact-item .update-btn:hover { background: rgba(255, 255, 255, 0.3); }
+
+        /* ========== TOAST ========== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 28px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow);
+            color: var(--text);
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s ease;
+            max-width: 400px;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            padding: 60px 0 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        .footer-brand h3 { font-size: 1.5rem; font-weight: 800; margin-bottom: 12px; }
+        .footer-brand h3 i { color: var(--primary); }
+        .footer-brand p { color: var(--text-muted); font-size: 0.9rem; max-width: 300px; }
+        .footer-col h4 { font-weight: 700; margin-bottom: 16px; font-size: 0.95rem; }
+        .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .footer-col ul a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            transition: color var(--transition);
+        }
+        .footer-col ul a:hover { color: var(--primary); }
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-bottom p { color: var(--text-muted); font-size: 0.85rem; }
+
+        /* ========== ANIMATIONS ========== */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-up { animation: slideUp 0.5s ease forwards; }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 1024px) {
+            .hero .container { grid-template-columns: 1fr; text-align: center; }
+            .hero p { margin-left: auto; margin-right: auto; }
+            .hero .stats { justify-content: center; }
+            .setor-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .nav-links {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 280px;
+                height: 100vh;
+                background: var(--bg-card);
+                backdrop-filter: blur(40px);
+                flex-direction: column;
+                justify-content: center;
+                padding: 40px;
+                transition: right var(--transition);
+                box-shadow: var(--shadow);
+            }
+            .nav-links.active { right: 0; }
+            .hamburger { display: flex; }
+            .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+            .hamburger.active span:nth-child(2) { opacity: 0; }
+            .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+            .cart-sidebar { width: 100%; right: -100%; }
+            .filter-wrapper { flex-direction: column; align-items: stretch; }
+            .search-box { width: 100%; }
+            .search-box input { width: 100%; }
+            .marketplace-grid { grid-template-columns: 1fr 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .waste-options { grid-template-columns: 1fr 1fr; }
+            .hero .stats { flex-direction: column; gap: 16px; }
+            .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+            .footer-bottom { flex-direction: column; text-align: center; }
+            .impact-grid { grid-template-columns: 1fr 1fr; }
+            .riwayat-table { font-size: 0.75rem; }
+            .riwayat-table th, .riwayat-table td { padding: 8px 10px; }
+            .delivery-options .delivery-opt { min-width: 100px; font-size: 0.8rem; }
+        }
+        @media (max-width: 480px) {
+            .marketplace-grid { grid-template-columns: 1fr; }
+            .hero-phone { max-width: 220px; }
+            .setor-form { padding: 16px; }
+            .setor-result { padding: 16px; }
+            .delivery-options { flex-direction: column; }
+            .delivery-options .delivery-opt { min-width: unset; }
+            .product-image .product-icon-wrap { width: 80px; height: 80px; font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== TOAST ========== -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ========== NAVBAR ========== -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="#" class="nav-brand">
+                <i class="fas fa-recycle"></i>
+                FashionCycle AI
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#setor">📤 Setor Limbah</a></li>
+                <li><a href="#fitur">⚡ Fitur AI</a></li>
+                <li><a href="#marketplace">🛍️ Marketplace</a></li>
+                <li><a href="#impact">🌍 Dampak</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="cart-btn" id="cartToggle">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-badge" id="cartCount">0</span>
+                </button>
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========== HERO ========== -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div>
+                <span class="section-badge" style="background: rgba(255,255,255,0.2);">
+                    <i class="fas fa-sparkles"></i> NLP + Rule-Based AI
+                </span>
+                <h1>
+                    Transformasi Limbah Pesisir<br />
+                    <span>Menjadi Fashion Berkelanjutan</span>
+                </h1>
+                <p>
+                    FashionCycle AI menggunakan <strong>NLP + Rule-Based</strong> untuk memahami deskripsi limbahmu,
+                    menentukan jenis, harga, dan rekomendasi produk fashion.
+                </p>
+                <div class="stats">
+                    <div>
+                        <h3 id="totalProductsHero">12</h3>
+                        <p>Produk Tersedia</p>
+                    </div>
+                    <div>
+                        <h3>12</h3>
+                        <p>UMKM Bergabung</p>
+                    </div>
+                    <div>
+                        <h3 id="totalWasteHero">1.250</h3>
+                        <p>Kg Limbah Terpakai</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PHONE MOCKUP ===== -->
+            <div class="hero-phone">
+                <div class="hero-phone-screen">
+                    <div class="phone-header">
+                        <span class="time">09:41</span>
+                        <span><i class="fas fa-signal"></i> <i class="fas fa-wifi"></i> <i class="fas fa-battery-three-quarters"></i></span>
+                    </div>
+                    <div class="phone-app-header">
+                        <i class="fas fa-recycle"></i>
+                        <span>FashionCycle AI</span>
+                    </div>
+
+                    <div class="phone-scan-area" id="scanArea">
+                        <i class="fas fa-camera" id="scanIcon"></i>
+                        <p id="scanText">Tap untuk scan limbah</p>
+                        <input type="file" id="fileInput" accept="image/*" />
+                    </div>
+
+                    <div class="phone-result" id="scanResult">
+                        <div>
+                            <div class="label">Material</div>
+                            <div class="value" id="materialResult">-</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="label">Nilai</div>
+                            <div class="value green" id="valueResult">Rp 0</div>
+                        </div>
+                    </div>
+
+                    <div class="phone-recommend" id="recommendContainer">
+                        <div class="item" data-product="Tote Bag"><i class="fas fa-bag-shopping"></i>Tote Bag</div>
+                        <div class="item" data-product="Sling Bag"><i class="fas fa-bag"></i>Sling Bag</div>
+                        <div class="item" data-product="Dompet"><i class="fas fa-wallet"></i>Dompet</div>
+                        <div class="item" data-product="Jaket"><i class="fas fa-vest"></i>Jaket</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== SETOR LIMBAH DENGAN NLP ========== -->
+    <section class="setor-section" id="setor">
+        <div class="container">
+            <span class="section-badge"><i class="fas fa-brain"></i> NLP + Rule-Based</span>
+            <h2 class="section-title">
+                <span>Setorkan Limbah</span> dengan <span>Deskripsi</span><br />AI akan <span>Memahami</span> Otomatis!
+            </h2>
+            <p class="section-desc">
+                Cukup <strong>tulis deskripsi limbah</strong> dalam bahasa Indonesia atau Inggris. 
+                AI akan menganalisis teks (NLP) dan menentukan jenis limbah, harga, dan rekomendasi produk.
+            </p>
+
+            <div class="setor-grid">
+                <!-- FORM SETOR DENGAN NLP -->
+                <div class="setor-form glass-card">
+                    <h4 style="margin-bottom: 20px; font-size: 1.1rem;">
+                        <i class="fas fa-upload" style="color: var(--primary);"></i> Form Setor Limbah
+                        <span style="font-size:0.8rem; font-weight:400; color:var(--text-muted); display:block;">
+                            <i class="fas fa-robot" style="color:var(--accent);"></i> Didukung NLP + Rule-Based
+                        </span>
+                    </h4>
+
+                    <div class="form-group">
+                        <label>📸 Foto Limbah</label>
+                        <div class="file-upload" id="fileUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p style="font-weight: 500;">Klik untuk upload foto</p>
+                            <span class="file-name" id="fileName">Belum ada file</span>
+                            <input type="file" id="wasteFileInput" accept="image/*" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            🧠 Deskripsi Limbah 
+                            <span class="label-desc">(Tulis dalam kalimat, AI akan menganalisis)</span>
+                        </label>
+                        <div class="nlp-input-wrapper">
+                            <textarea id="wasteDescription" placeholder="Contoh: Saya punya jaring nelayan bekas berbahan nylon, kualitas masih bagus, berat sekitar 5 kg">saya punya jaring nelayan bekas berbahan nylon, kualitas bagus, berat 5 kg</textarea>
+                            <span class="nlp-icon"><i class="fas fa-robot"></i></span>
+                        </div>
+                        <div class="nlp-hint">
+                            💡 Coba tulis: 
+                            <strong>"jaring nelayan nylon"</strong>, 
+                            <strong>"botol plastik laut"</strong>, 
+                            <strong>"tali tambang bekas"</strong>, 
+                            <strong>"kerang laut"</strong>
+                        </div>
+                        <div id="nlpDetectedBadge"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>⚖️ Berat (kg) <span class="label-desc">(bisa dideteksi otomatis dari teks)</span></label>
+                        <input type="number" id="wasteWeight" placeholder="Masukkan berat dalam kg" value="5" min="0.1" step="0.1" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>👤 Nama Penyetor</label>
+                        <input type="text" id="wasteName" placeholder="Masukkan nama Anda" value="Andi Pratama" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>📞 Nomor HP</label>
+                        <input type="text" id="wastePhone" placeholder="Masukkan nomor HP" value="0812-3456-7890" />
+                    </div>
+
+                    <!-- OPSI PENGIRIMAN -->
+                    <div class="form-group">
+                        <label>🚚 Opsi Pengiriman</label>
+                        <div class="delivery-options" id="deliveryOptions">
+                            <div class="delivery-opt active" data-opt="antar">
+                                <i class="fas fa-walking"></i>
+                                Antar Sendiri
+                                <span class="sub">Ke drop point terdekat</span>
+                            </div>
+                            <div class="delivery-opt" data-opt="dijemput">
+                                <i class="fas fa-truck"></i>
+                                Dijemput Pihak FC
+                                <span class="sub" id="deliverySub">✅ Gratis untuk Jabodetabek</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FORM ALAMAT -->
+                    <div class="alamat-section" id="alamatSection">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label>📍 Alamat Lengkap</label>
+                            <textarea id="wasteAddress" placeholder="Masukkan alamat lengkap untuk penjemputan">Jl. Pantai Indah No. 123, Jakarta Utara</textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>📍 Pilih Kota</label>
+                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                <select id="wasteCity" style="flex:1; min-width:120px; padding:10px 14px; border-radius:var(--radius-sm); border:2px solid rgba(255,255,255,0.1); background:var(--bg); color:var(--text);">
+                                    <option value="jakarta">Jakarta (Gratis)</option>
+                                    <option value="bogor">Bogor (Gratis)</option>
+                                    <option value="depok">Depok (Gratis)</option>
+                                    <option value="tangerang">Tangerang (Gratis)</option>
+                                    <option value="bekasi">Bekasi (Gratis)</option>
+                                    <option value="bandung">Bandung (Rp 15.000)</option>
+                                    <option value="surabaya">Surabaya (Rp 35.000)</option>
+                                    <option value="medan">Medan (Rp 45.000)</option>
+                                    <option value="makassar">Makassar (Rp 50.000)</option>
+                                    <option value="bali">Bali (Rp 55.000)</option>
+                                    <option value="lainnya">Lainnya (Rp 70.000)</option>
+                                </select>
+                                <span id="ongkirDisplay" style="font-weight:700; color:#55efc4; font-size:1.1rem; min-width:100px;">✅ Gratis</span>
+                            </div>
+                            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;" id="ongkirNote">
+                                <i class="fas fa-info-circle"></i> Gratis ongkir untuk wilayah Jabodetabek
+                            </p>
+                        </div>
+                    </div>
+
+                    <button class="submit-btn" id="submitWasteBtn">
+                        <i class="fas fa-brain"></i> Analisis NLP & Setor Limbah
+                    </button>
+                </div>
+
+                <!-- HASIL CEK -->
+                <div class="setor-result glass-card" id="setorResult">
+                    <div class="result-placeholder" id="resultPlaceholder">
+                        <i class="fas fa-brain"></i>
+                        <h4>Tulis deskripsi limbah</h4>
+                        <p>AI akan menganalisis teks (NLP) dan menentukan jenis limbah</p>
+                        <div style="margin-top:16px; padding:12px; background:rgba(0,184,148,0.05); border-radius:8px; font-size:0.85rem; color:var(--text-muted);">
+                            <strong>Contoh deskripsi:</strong><br />
+                            "saya punya jaring nelayan bekas berbahan nylon, kualitas bagus, berat 5 kg"
+                        </div>
+                    </div>
+
+                    <div class="result-card" id="resultCard" style="display: none;">
+                        <div class="result-header">
+                            <div class="icon"><i class="fas fa-recycle"></i></div>
+                            <div>
+                                <h3 id="resultMaterialName">Jaring Nelayan</h3>
+                                <p style="font-size: 0.85rem; color: var(--text-muted);" id="resultMaterialType">Nylon</p>
+                            </div>
+                            <span class="status verified" id="resultStatus">✅ Layak Daur Ulang</span>
+                        </div>
+
+                        <div class="nlp-info">
+                            <i class="fas fa-robot"></i> 
+                            <span id="nlpAnalysisText">NLP menganalisis: "jaring nelayan nylon" → Deteksi: Jaring Nelayan</span>
+                        </div>
+
+                        <div class="result-item">
+                            <span class="label">📦 Material</span>
+                            <span class="value" id="resultMaterial">Nylon</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">⭐ Kualitas</span>
+                            <span class="value" id="resultQuality">Baik</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">⚖️ Berat</span>
+                            <span class="value" id="resultWeight">5 kg</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">🔄 Potensi Daur Ulang</span>
+                            <span class="value green" id="resultRecycle">85%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">💰 Estimasi Nilai</span>
+                            <span class="value gold" id="resultPrice">Rp 50.000</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">🏷️ Kategori</span>
+                            <span class="value" id="resultCategory">High Value</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">👤 Penyetor</span>
+                            <span class="value" id="resultPenyetor">Andi Pratama</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">🚚 Opsi Pengiriman</span>
+                            <span class="value" id="resultDelivery">Antar Sendiri</span>
+                        </div>
+                        <div class="result-item" id="resultAlamatRow" style="display:none;">
+                            <span class="label">📍 Alamat</span>
+                            <span class="value" id="resultAlamat" style="font-size:0.85rem;">-</span>
+                        </div>
+                        <div class="result-item" id="resultOngkirRow" style="display:none;">
+                            <span class="label">💰 Ongkir</span>
+                            <span class="value green" id="resultOngkir">✅ Gratis</span>
+                        </div>
+
+                        <div class="fashion-preview">
+                            <h4>👗 Bisa Diolah Menjadi:</h4>
+                            <div class="product-tags" id="resultProducts">
+                                <span>👜 Tote Bag</span>
+                                <span>🎒 Sling Bag</span>
+                                <span>👛 Dompet</span>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                                <i class="fas fa-check-circle" style="color: var(--primary);"></i> 
+                                Limbah ini layak diolah menjadi produk fashion!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== RIWAYAT SETORAN ========== -->
+    <section class="riwayat-section" id="riwayat">
+        <div class="container">
+            <span class="section-badge"><i class="fas fa-history"></i> Riwayat</span>
+            <h2 class="section-title">
+                <span>Riwayat</span> Setoran Limbah
+            </h2>
+            <p class="section-desc">
+                Semua setoran limbah yang telah dianalisis oleh NLP tercatat di sini.
+            </p>
+
+            <div id="riwayatContainer">
+                <table class="riwayat-table" id="riwayatTable">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Penyetor</th>
+                            <th>Jenis Limbah</th>
+                            <th>Berat</th>
+                            <th>Nilai</th>
+                            <th>Produk</th>
+                            <th>Pengiriman</th>
+                            <th>Ongkir</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riwayatBody">
+                        <!-- Diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+                <div class="riwayat-empty" id="riwayatEmpty" style="display: none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>Belum ada riwayat setoran</p>
+                    <small style="color: var(--text-muted);">Setorkan limbah pertama Anda!</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FITUR AI ========== -->
+    <section class="features-section" id="fitur">
+        <div class="container">
+            <span class="section-badge"><i class="fas fa-robot"></i> Teknologi AI</span>
+            <h2 class="section-title">
+                <span>NLP + Rule-Based</span> dalam 3 Fitur
+            </h2>
+            <p class="section-desc">
+                Setiap fitur menggunakan NLP untuk memahami teks dan Rule-Based untuk menentukan keputusan.
+            </p>
+
+            <div class="features-grid">
+                <!-- FITUR 1: NLP Text Analysis -->
+                <div class="feature-card glass-card">
+                    <div class="icon-box"><i class="fas fa-language"></i></div>
+                    <span class="ai-badge">NLP</span>
+                    <h4>1. NLP Text Analysis</h4>
+                    <p class="subtitle">AI memahami deskripsi limbah dari teks</p>
+                    <div class="nlp-input-wrapper">
+                        <input type="text" class="demo-input" id="nlpTextInput" placeholder="Tulis deskripsi limbah..." value="jaring nelayan nylon" />
+                    </div>
+                    <button class="demo-btn" id="nlpAnalyzeBtn"><i class="fas fa-brain"></i> Analisis NLP</button>
+                    <div class="demo-output" id="nlpOutput">
+                        <div class="result-item"><span class="result-label">🔍 Detected</span><span class="result-value" id="nlpDetected">Jaring Nelayan</span></div>
+                        <div class="result-item"><span class="result-label">📦 Material</span><span class="result-value" id="nlpMaterial">Nylon</span></div>
+                        <div class="result-item"><span class="result-label">⭐ Confidence</span><span class="result-value" id="nlpConfidence">95%</span></div>
+                        <div class="result-item"><span class="result-label">🏷️ Kategori</span><span class="result-value" id="nlpCategory">High Value</span></div>
+                    </div>
+                </div>
+
+                <!-- FITUR 2: Rule-Based Valuation -->
+                <div class="feature-card glass-card">
+                    <div class="icon-box"><i class="fas fa-calculator"></i></div>
+                    <span class="ai-badge">Rule-Based</span>
+                    <h4>2. Rule-Based Valuation</h4>
+                    <p class="subtitle">Harga berdasarkan aturan (jenis × berat × kualitas)</p>
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <select class="demo-input" id="ruleType" style="flex:1; margin-bottom:0;">
+                            <option value="jaring">Jaring Nelayan</option>
+                            <option value="plastik">Plastik Laut</option>
+                            <option value="tali">Tali Tambang</option>
+                            <option value="kerang">Kerang Laut</option>
+                            <option value="kaca">Kaca Laut</option>
+                            <option value="karet">Karet Ban</option>
+                        </select>
+                        <input type="number" class="demo-input" id="ruleWeight" value="5" style="flex:0.5; margin-bottom:0;" />
+                    </div>
+                    <select class="demo-input" id="ruleQuality">
+                        <option value="Premium">Premium</option>
+                        <option value="Baik" selected>Baik</option>
+                        <option value="Sedang">Sedang</option>
+                        <option value="Rendah">Rendah</option>
+                    </select>
+                    <button class="demo-btn" id="ruleValuationBtn"><i class="fas fa-calculator"></i> Hitung</button>
+                    <div class="demo-output" id="ruleOutput">
+                        <div class="result-item"><span class="result-label">💰 Nilai</span><span class="result-value" id="ruleResult">Rp 50.000</span></div>
+                        <div class="result-item"><span class="result-label">📊 Per Kg</span><span class="result-value" id="rulePerKg">Rp 10.000/kg</span></div>
+                        <div class="result-item"><span class="result-label">🏷️ Kategori</span><span class="result-value" id="ruleCategory">High Value</span></div>
+                    </div>
+                </div>
+
+                <!-- FITUR 3: Rule-Based Recommendation -->
+                <div class="feature-card glass-card">
+                    <div class="icon-box"><i class="fas fa-wand-magic-sparkles"></i></div>
+                    <span class="ai-badge">Rule-Based</span>
+                    <h4>3. Rule-Based Recommendation</h4>
+                    <p class="subtitle">Rekomendasi produk berdasarkan jenis limbah</p>
+                    <select class="demo-input" id="recType">
+                        <option value="jaring">Jaring Nelayan</option>
+                        <option value="plastik">Plastik Laut</option>
+                        <option value="tali">Tali Tambang</option>
+                        <option value="kerang">Kerang Laut</option>
+                        <option value="kaca">Kaca Laut</option>
+                        <option value="karet">Karet Ban</option>
+                    </select>
+                    <button class="demo-btn" id="recBtn"><i class="fas fa-robot"></i> Rekomendasi</button>
+                    <div class="demo-output" id="recOutput">
+                        <div id="recList">
+                            <div class="result-item"><span>👜 Tote Bag</span><span style="color:var(--primary);">★ 4.8</span></div>
+                            <div class="result-item"><span>🎒 Sling Bag</span><span style="color:var(--primary);">★ 4.6</span></div>
+                            <div class="result-item"><span>👛 Dompet</span><span style="color:var(--primary);">★ 4.5</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== MARKETPLACE ========== -->
+    <section class="marketplace-section" id="marketplace">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <span class="section-badge"><i class="fas fa-store"></i> Marketplace</span>
+                    <h2 class="section-title">Belanja <span>Fashion Daur Ulang</span></h2>
+                </div>
+                <span style="color: var(--text-muted); font-size: 0.9rem;" id="resultCount">12 produk</span>
+            </div>
+
+            <div class="filter-wrapper glass-card">
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="all">Semua</button>
+                    <button class="filter-btn" data-filter="tas">👜 Tas</button>
+                    <button class="filter-btn" data-filter="aksesoris">💎 Aksesoris</button>
+                    <button class="filter-btn" data-filter="pakaian">👕 Pakaian</button>
+                    <button class="filter-btn" data-filter="sepatu">👟 Sepatu</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Cari produk..." />
+                    <button id="searchBtn"><i class="fas fa-search"></i> Cari</button>
+                </div>
+            </div>
+
+            <div class="marketplace-grid" id="productsGrid"></div>
+        </div>
+    </section>
+
+    <!-- ========== IMPACT ========== -->
+    <section class="impact-section" id="impact">
+        <div class="container">
+            <span class="section-badge" style="background: rgba(255,255,255,0.2);">🌍 Dampak</span>
+            <h2 class="section-title" style="color: #fff;">
+                Circular <span style="-webkit-text-fill-color: #55efc4;">Impact</span> Tracker
+            </h2>
+            <p style="color: rgba(255,255,255,0.8); max-width: 500px;">
+                Klik tombol update untuk mensimulasikan penambahan dampak
+            </p>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <span class="number" id="wasteManaged">1.250</span>
+                    <span class="label">Kg Limbah Terkelola</span>
+                    <button class="update-btn" data-target="wasteManaged" data-add="50">+50 Kg</button>
+                </div>
+                <div class="impact-item">
+                    <span class="number" id="co2Reduced">520</span>
+                    <span class="label">Kg CO₂ Berkurang</span>
+                    <button class="update-btn" data-target="co2Reduced" data-add="20">+20 Kg</button>
+                </div>
+                <div class="impact-item">
+                    <span class="number" id="productsCreated">350</span>
+                    <span class="label">Produk Tercipta</span>
+                    <button class="update-btn" data-target="productsCreated" data-add="5">+5 Produk</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== CART ========== -->
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h2><i class="fas fa-shopping-cart"></i> Keranjang</h2>
+            <button class="close-cart" id="closeCart"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <div class="cart-empty">
+                <i class="fas fa-shopping-bag"></i>
+                <p>Keranjang kosong</p>
+            </div>
+        </div>
+        <div class="cart-footer" id="cartFooter" style="display: none;">
+            <div class="total"><span>Total</span><span id="cartTotal">Rp 0</span></div>
+            <button class="checkout-btn" id="checkoutBtn"><i class="fas fa-credit-card"></i> Checkout</button>
+        </div>
+    </div>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3><i class="fas fa-recycle"></i> FashionCycle AI</h3>
+                    <p>Platform AI dengan NLP + Rule-Based untuk transformasi limbah pesisir menjadi fashion berkelanjutan.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Fitur AI</h4>
+                    <ul>
+                        <li><a href="#setor">NLP Setor Limbah</a></li>
+                        <li><a href="#fitur">NLP Text Analysis</a></li>
+                        <li><a href="#fitur">Rule-Based Valuation</a></li>
+                        <li><a href="#fitur">Rule-Based Rekomendasi</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Marketplace</h4>
+                    <ul>
+                        <li><a href="#marketplace">Tas</a></li>
+                        <li><a href="#marketplace">Aksesoris</a></li>
+                        <li><a href="#marketplace">Pakaian</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Kontak</h4>
+                    <ul>
+                        <li><a href="#"><i class="fas fa-envelope"></i> hello@fashioncycle.ai</a></li>
+                        <li><a href="#"><i class="fas fa-phone"></i> +62 812-3456-7890</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 FashionCycle AI</p>
+                <div>
+                    <a href="#" style="color: var(--text-muted); margin-right: 16px;"><i class="fab fa-instagram"></i></a>
+                    <a href="#" style="color: var(--text-muted); margin-right: 16px;"><i class="fab fa-twitter"></i></a>
+                    <a href="#" style="color: var(--text-muted);"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        // =============================================
+        // 1. KNOWLEDGE BASE (Rule-Based)
+        // =============================================
+        const materialDB = {
+            jaring: { 
+                name: 'Jaring Nelayan', 
+                material: 'Nylon', 
+                quality: 'Baik', 
+                recycle: '85%', 
+                pricePerKg: 10000,
+                category: 'High Value', 
+                products: ['Tote Bag', 'Sling Bag', 'Dompet', 'Jaket'],
+                keywords: ['jaring', 'nelayan', 'nylon', 'tali', 'pancing', 'jaring nelayan', 'jaring nylon']
+            },
+            plastik: { 
+                name: 'Plastik Laut', 
+                material: 'Polyethylene', 
+                quality: 'Sedang', 
+                recycle: '70%', 
+                pricePerKg: 6000,
+                category: 'Medium Value', 
+                products: ['Tas Belanja', 'Tas Jinjing', 'Tempat Pensil'],
+                keywords: ['plastik', 'botol', 'kemasan', 'polyethylene', 'plastik laut']
+            },
+            tali: { 
+                name: 'Tali Tambang', 
+                material: 'Polypropylene', 
+                quality: 'Baik', 
+                recycle: '80%', 
+                pricePerKg: 8000,
+                category: 'High Value', 
+                products: ['Tas Anyam', 'Tali Sepatu', 'Gelang'],
+                keywords: ['tali', 'tambang', 'polypropylene', 'tali tambang']
+            },
+            kerang: { 
+                name: 'Kerang Laut', 
+                material: 'Calcium Carbonate', 
+                quality: 'Premium', 
+                recycle: '90%', 
+                pricePerKg: 12000,
+                category: 'Premium Value', 
+                products: ['Perhiasan', 'Aksesoris', 'Dekorasi'],
+                keywords: ['kerang', 'cangkang', 'shell', 'tiram', 'kerang laut']
+            },
+            kaca: { 
+                name: 'Kaca Laut', 
+                material: 'Silica', 
+                quality: 'Baik', 
+                recycle: '75%', 
+                pricePerKg: 5000,
+                category: 'Medium Value', 
+                products: ['Perhiasan Kaca', 'Mozaik', 'Aksesoris'],
+                keywords: ['kaca', 'botol kaca', 'pecahan kaca', 'kaca laut']
+            },
+            karet: { 
+                name: 'Karet Ban', 
+                material: 'Rubber', 
+                quality: 'Sedang', 
+                recycle: '60%', 
+                pricePerKg: 4000,
+                category: 'Low Value', 
+                products: ['Tas Karet', 'Dompet', 'Sandals'],
+                keywords: ['karet', 'ban', 'rubber', 'karet ban']
+            }
+        };
+
+        // =============================================
+        // 2. NLP ENGINE (Text Processing)
+        // =============================================
+        const nlpEngine = {
+            // Tokenisasi: memecah teks menjadi kata-kata
+            tokenize: function(text) {
+                return text.toLowerCase()
+                    .replace(/[^a-z0-9 ]/g, '')
+                    .split(' ')
+                    .filter(word => word.length > 0);
+            },
+
+            // Deteksi jenis limbah dari teks
+            detectWasteType: function(text) {
+                const tokens = this.tokenize(text);
+                
+                // Hitung skor untuk setiap jenis
+                let scores = {};
+                for (let [type, data] of Object.entries(materialDB)) {
+                    let score = 0;
+                    for (let keyword of data.keywords) {
+                        // Cek apakah keyword ada dalam teks (multi-word support)
+                        if (text.toLowerCase().includes(keyword.toLowerCase())) {
+                            score += 10; // Bonus untuk multi-word match
+                        }
+                        // Cek token individual
+                        for (let token of tokens) {
+                            if (keyword.includes(token) && token.length > 2) {
+                                score += 5;
+                            }
+                            if (token.includes(keyword) && keyword.length > 2) {
+                                score += 3;
+                            }
+                        }
+                    }
+                    scores[type] = score;
+                }
+
+                // Cari skor tertinggi
+                let maxScore = 0;
+                let detectedType = null;
+                for (let [type, score] of Object.entries(scores)) {
+                    if (score > maxScore) {
+                        maxScore = score;
+                        detectedType = type;
+                    }
+                }
+
+                return {
+                    type: detectedType,
+                    confidence: Math.min(Math.round((maxScore / 50) * 100), 95),
+                    scores: scores
+                };
+            },
+
+            // Ekstrak berat dari teks (contoh: "5 kg", "5kg", "5 kilogram")
+            extractWeight: function(text) {
+                const patterns = [
+                    /(\d+[.,]?\d*)\s*(?:kg|kilogram|kg\.|kilo)/i,
+                    /(\d+[.,]?\d*)\s*kg/i,
+                    /berat\s*(\d+[.,]?\d*)/i,
+                    /(\d+[.,]?\d*)\s*kilogram/i
+                ];
+                
+                for (let pattern of patterns) {
+                    const match = text.match(pattern);
+                    if (match) {
+                        return parseFloat(match[1].replace(',', '.'));
+                    }
+                }
+                return null;
+            },
+
+            // Ekstrak kualitas dari teks
+            extractQuality: function(text) {
+                const qualityKeywords = {
+                    'Premium': ['premium', 'excellent', 'sangat baik', 'grade a', 'kualitas tinggi'],
+                    'Baik': ['baik', 'bagus', 'good', 'grade b', 'kualitas baik'],
+                    'Sedang': ['sedang', 'medium', 'cukup', 'moderate'],
+                    'Rendah': ['rendah', 'low', 'buruk', 'jelek', 'rusak']
+                };
+
+                for (let [quality, keywords] of Object.entries(qualityKeywords)) {
+                    for (let keyword of keywords) {
+                        if (text.toLowerCase().includes(keyword)) {
+                            return quality;
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Analisis lengkap
+            analyze: function(text) {
+                const weight = this.extractWeight(text);
+                const quality = this.extractQuality(text) || 'Baik';
+                const detection = this.detectWasteType(text);
+                
+                return {
+                    text: text,
+                    weight: weight,
+                    quality: quality,
+                    detectedType: detection.type,
+                    confidence: detection.confidence,
+                    scores: detection.scores
+                };
+            }
+        };
+
+        // =============================================
+        // 3. RULE-BASED ENGINE
+        // =============================================
+        const ruleEngine = {
+            // Tentukan harga berdasarkan aturan
+            calculateValue: function(type, weight, quality) {
+                const data = materialDB[type];
+                if (!data) return { total: 0, perKg: 0, category: 'Unknown' };
+
+                const basePrice = data.pricePerKg;
+                
+                // Rule: Quality multiplier
+                const qualityMultiplier = {
+                    'Premium': 1.5,
+                    'Baik': 1.0,
+                    'Sedang': 0.7,
+                    'Rendah': 0.4
+                };
+                const multiplier = qualityMultiplier[quality] || 1.0;
+
+                // Rule: Volume discount
+                let discount = 0;
+                if (weight > 100) discount = 0.15;
+                else if (weight > 50) discount = 0.10;
+                else if (weight > 25) discount = 0.05;
+
+                let total = basePrice * weight * multiplier;
+                total = total - (total * discount);
+
+                // Rule: Minimum price
+                if (total < 1000 && weight > 0) total = 1000;
+
+                return {
+                    total: Math.round(total),
+                    perKg: Math.round(basePrice * multiplier),
+                    category: data.category,
+                    discount: Math.round(discount * 100)
+                };
+            },
+
+            // Rekomendasi produk berdasarkan rule
+            getRecommendations: function(type, weight) {
+                const data = materialDB[type];
+                if (!data) return [];
+
+                const products = data.products || [];
+                
+                // Rule: Berdasarkan berat, tentukan produk yang sesuai
+                if (weight < 1) {
+                    // Berat kecil → aksesoris
+                    return products.filter(p => 
+                        p.includes('Dompet') || 
+                        p.includes('Gelang') || 
+                        p.includes('Anting') ||
+                        p.includes('Perhiasan')
+                    );
+                } else if (weight < 5) {
+                    // Berat sedang → tas kecil
+                    return products.filter(p => 
+                        p.includes('Tote') || 
+                        p.includes('Sling') || 
+                        p.includes('Dompet') ||
+                        p.includes('Tas Jinjing')
+                    );
+                } else {
+                    // Berat besar → semua produk
+                    return products;
+                }
+            },
+
+            // Tentukan status daur ulang
+            getRecycleStatus: function(type, quality) {
+                const data = materialDB[type];
+                if (!data) return { status: 'Tidak Diketahui', percentage: '0%' };
+
+                const recycleRates = {
+                    'Premium': 95,
+                    'Baik': 85,
+                    'Sedang': 70,
+                    'Rendah': 45
+                };
+                const percentage = recycleRates[quality] || 50;
+                
+                let status = 'Layak Daur Ulang';
+                if (percentage < 50) status = 'Kurang Layak';
+                else if (percentage < 70) status = 'Cukup Layak';
+                
+                return { status, percentage: `${percentage}%` };
+            }
+        };
+
+        // =============================================
+        // 4. GLOBAL STATE
+        // =============================================
+        let currentWaste = 'jaring';
+        let deliveryOption = 'antar';
+        let riwayatSetoran = JSON.parse(localStorage.getItem('riwayatSetoran')) || [];
+        let totalWaste = riwayatSetoran.reduce((sum, item) => sum + item.berat, 0);
+
+        // Ongkir data
+        const ongkirData = {
+            jakarta: 0, bogor: 0, depok: 0, tangerang: 0, bekasi: 0,
+            bandung: 15000, surabaya: 35000, medan: 45000, 
+            makassar: 50000, bali: 55000, lainnya: 70000
+        };
+        const kotaLabels = {
+            jakarta: 'Jakarta', bogor: 'Bogor', depok: 'Depok', 
+            tangerang: 'Tangerang', bekasi: 'Bekasi', bandung: 'Bandung',
+            surabaya: 'Surabaya', medan: 'Medan', makassar: 'Makassar',
+            bali: 'Bali', lainnya: 'Lainnya'
+        };
+
+        // =============================================
+        // 5. PRODUCT DATABASE
+        // =============================================
+        const products = [
+            { id: 1, name: 'Eco Marine Tote Bag', material: 'Jaring Nelayan Nylon', category: 'tas', price: 185000,
+                originalPrice: 250000, seller: 'EcoWear Studio', icon: 'fa-bag-shopping', color: '#00b894',
+                wasteType: 'Jaring Nelayan', rating: 4.8, reviews: 124 },
+            { id: 2, name: 'Sling Bag Laut', material: 'Plastik Laut Daur Ulang', category: 'tas', price: 165000,
+                originalPrice: 220000, seller: 'SeaFashion', icon: 'fa-bag', color: '#0984e3', wasteType: 'Plastik Laut',
+                rating: 4.7, reviews: 98 },
+            { id: 3, name: 'Dompet Anyaman Nylon', material: 'Tali Tambang Nylon', category: 'tas', price: 95000,
+                originalPrice: 130000, seller: 'NylonCraft', icon: 'fa-wallet', color: '#6c5ce7',
+                wasteType: 'Tali Tambang', rating: 4.9, reviews: 67 },
+            { id: 4, name: 'Jaket Eco Marine', material: 'Jaring Nelayan + Karet', category: 'pakaian', price: 325000,
+                originalPrice: 450000, seller: 'EcoWear Studio', icon: 'fa-vest', color: '#00cec9',
+                wasteType: 'Jaring Nelayan', rating: 4.6, reviews: 45 },
+            { id: 5, name: 'Gelang Kerang Premium', material: 'Kerang Laut Pilihan', category: 'aksesoris', price: 75000,
+                originalPrice: 100000, seller: 'ShellArt', icon: 'fa-gem', color: '#fdcb6e', wasteType: 'Kerang Laut',
+                rating: 4.9, reviews: 234 },
+            { id: 6, name: 'Tas Jinjing Plastik Laut', material: 'Plastik Laut HPDE', category: 'tas', price: 145000,
+                originalPrice: 190000, seller: 'SeaFashion', icon: 'fa-shopping-bag', color: '#00b894',
+                wasteType: 'Plastik Laut', rating: 4.5, reviews: 78 },
+            { id: 7, name: 'Kalung Mozaik Kaca Laut', material: 'Kaca Laut Daur Ulang', category: 'aksesoris', price: 120000,
+                originalPrice: 160000, seller: 'ShellArt', icon: 'fa-ring', color: '#0984e3', wasteType: 'Kaca Laut',
+                rating: 4.8, reviews: 156 },
+            { id: 8, name: 'Sandals Karet Daur Ulang', material: 'Karet Ban Bekas', category: 'sepatu', price: 210000,
+                originalPrice: 280000, seller: 'NylonCraft', icon: 'fa-shoe-prints', color: '#6c5ce7',
+                wasteType: 'Karet Ban', rating: 4.4, reviews: 34 },
+            { id: 9, name: 'Tas Anyam Tali Tambang', material: 'Tali Tambang Polypropylene', category: 'tas', price: 155000,
+                originalPrice: 200000, seller: 'NylonCraft', icon: 'fa-basket-shopping', color: '#e17055',
+                wasteType: 'Tali Tambang', rating: 4.7, reviews: 89 },
+            { id: 10, name: 'Anting Kerang Laut', material: 'Kerang Laut Premium', category: 'aksesoris', price: 65000,
+                originalPrice: 85000, seller: 'ShellArt', icon: 'fa-earrings', color: '#fdcb6e', wasteType: 'Kerang Laut',
+                rating: 4.9, reviews: 312 },
+            { id: 11, name: 'Tas Ransel Jaring Nylon', material: 'Jaring Nelayan Nylon', category: 'tas', price: 275000,
+                originalPrice: 350000, seller: 'EcoWear Studio', icon: 'fa-backpack', color: '#00b894',
+                wasteType: 'Jaring Nelayan', rating: 4.6, reviews: 56 },
+            { id: 12, name: 'Dompet Karet Ban', material: 'Karet Ban Bekas', category: 'tas', price: 85000,
+                originalPrice: 110000, seller: 'NylonCraft', icon: 'fa-wallet', color: '#6c5ce7', wasteType: 'Karet Ban',
+                rating: 4.3, reviews: 28 }
+        ];
+
+        // =============================================
+        // 6. STATE
+        // =============================================
+        let cart = [];
+        let currentFilter = 'all';
+        let currentSearch = '';
+
+        // =============================================
+        // 7. THEME TOGGLE
+        // =============================================
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) { html.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme); }
+
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon(next);
+        });
+
+        function updateThemeIcon(theme) {
+            const icon = themeToggle.querySelector('i');
+            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // =============================================
+        // 8. NAVBAR
+        // =============================================
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            navbar.classList.toggle('scrolled', window.pageYOffset > 50);
+        });
+
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('navLinks');
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            navLinks.classList.toggle('active');
+        });
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                hamburger.classList.remove('active');
+                navLinks.classList.remove('active');
+            });
+        });
+
+        // =============================================
+        // 9. TOAST
+        // =============================================
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // =============================================
+        // 10. NLP ANALYSIS FUNCTIONS
+        // =============================================
+        function analyzeWasteDescription(text) {
+            const result = nlpEngine.analyze(text);
+            
+            // Jika deteksi gagal, gunakan default
+            if (!result.detectedType) {
+                result.detectedType = 'jaring';
+                result.confidence = 30;
+            }
+            
+            return result;
+        }
+
+        function displayNLPResult(text) {
+            const analysis = analyzeWasteDescription(text);
+            const data = materialDB[analysis.detectedType];
+            
+            if (!data) {
+                document.getElementById('nlpDetected').textContent = 'Tidak Terdeteksi';
+                document.getElementById('nlpMaterial').textContent = '-';
+                document.getElementById('nlpConfidence').textContent = '0%';
+                document.getElementById('nlpCategory').textContent = '-';
+                return;
+            }
+
+            document.getElementById('nlpDetected').textContent = data.name;
+            document.getElementById('nlpMaterial').textContent = data.material;
+            document.getElementById('nlpConfidence').textContent = `${analysis.confidence}%`;
+            document.getElementById('nlpCategory').textContent = data.category;
+        }
+
+        // =============================================
+        // 11. NLP SETOR LIMBAH
+        // =============================================
+        // Auto-detect saat user mengetik
+        const wasteDescription = document.getElementById('wasteDescription');
+        const nlpDetectedBadge = document.getElementById('nlpDetectedBadge');
+
+        wasteDescription.addEventListener('input', function() {
+            const text = this.value;
+            if (text.trim().length > 3) {
+                const analysis = analyzeWasteDescription(text);
+                if (analysis.detectedType) {
+                    const data = materialDB[analysis.detectedType];
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge success">
+                            <i class="fas fa-check-circle"></i> 
+                            Terdeteksi: ${data.name} (${analysis.confidence}% confidence)
+                        </span>
+                    `;
+                    
+                    // Auto-fill weight if detected
+                    if (analysis.weight) {
+                        document.getElementById('wasteWeight').value = analysis.weight;
+                    }
+                } else {
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge warning">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            Tidak terdeteksi, coba deskripsi yang lebih jelas
+                        </span>
+                    `;
+                }
+            } else {
+                nlpDetectedBadge.innerHTML = '';
+            }
+        });
+
+        // =============================================
+        // 12. FILE UPLOAD
+        // =============================================
+        document.getElementById('fileUploadArea').addEventListener('click', () => {
+            document.getElementById('wasteFileInput').click();
+        });
+
+        document.getElementById('wasteFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `📷 ${file.name}`;
+                document.getElementById('fileName').style.color = 'var(--primary)';
+                showToast(`📸 Foto "${file.name}" berhasil diupload!`);
+            }
+        });
+
+        // =============================================
+        // 13. DELIVERY OPTIONS
+        // =============================================
+        const deliveryOpts = document.querySelectorAll('.delivery-opt');
+        const alamatSection = document.getElementById('alamatSection');
+        const ongkirDisplay = document.getElementById('ongkirDisplay');
+        const ongkirNote = document.getElementById('ongkirNote');
+
+        deliveryOpts.forEach(opt => {
+            opt.addEventListener('click', () => {
+                deliveryOpts.forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                deliveryOption = opt.dataset.opt;
+
+                if (deliveryOption === 'dijemput') {
+                    alamatSection.classList.add('show');
+                    updateOngkir();
+                } else {
+                    alamatSection.classList.remove('show');
+                }
+            });
+        });
+
+        document.getElementById('wasteCity').addEventListener('change', updateOngkir);
+
+        function updateOngkir() {
+            const city = document.getElementById('wasteCity').value;
+            const ongkir = ongkirData[city] || 70000;
+            const cityLabel = kotaLabels[city] || city;
+
+            if (ongkir === 0) {
+                ongkirDisplay.innerHTML = '✅ Gratis';
+                ongkirDisplay.style.color = '#55efc4';
+                ongkirNote.innerHTML = `<i class="fas fa-info-circle"></i> Gratis ongkir untuk wilayah Jabodetabek (Jakarta, Bogor, Depok, Tangerang, Bekasi)`;
+                document.getElementById('deliverySub').textContent = '✅ Gratis untuk Jabodetabek';
+            } else {
+                ongkirDisplay.textContent = `Rp ${ongkir.toLocaleString()}`;
+                ongkirDisplay.style.color = 'var(--primary)';
+                ongkirNote.innerHTML = `<i class="fas fa-info-circle"></i> Ongkir Rp ${ongkir.toLocaleString()} untuk wilayah ${cityLabel}`;
+                document.getElementById('deliverySub').textContent = `Rp ${ongkir.toLocaleString()} untuk luar kota`;
+            }
+        }
+
+        // =============================================
+        // 14. SUBMIT SETOR DENGAN NLP
+        // =============================================
+        document.getElementById('submitWasteBtn').addEventListener('click', () => {
+            const description = document.getElementById('wasteDescription').value;
+            const weight = parseFloat(document.getElementById('wasteWeight').value) || 1;
+            const name = document.getElementById('wasteName').value || 'Anonim';
+            const phone = document.getElementById('wastePhone').value || '-';
+            const file = document.getElementById('wasteFileInput').files[0];
+
+            if (!file) {
+                showToast('⚠️ Upload foto limbah terlebih dahulu!');
+                return;
+            }
+
+            if (description.trim().length < 3) {
+                showToast('⚠️ Tulis deskripsi limbah yang jelas!');
+                return;
+            }
+
+            // NLP Analysis
+            const analysis = analyzeWasteDescription(description);
+            const detectedType = analysis.detectedType || 'jaring';
+            const data = materialDB[detectedType];
+            
+            if (!data) {
+                showToast('⚠️ Jenis limbah tidak terdeteksi, coba deskripsi yang lebih jelas');
+                return;
+            }
+
+            // Rule-Based: Hitung nilai
+            const quality = analysis.quality || 'Baik';
+            const valuation = ruleEngine.calculateValue(detectedType, weight, quality);
+            const recycle = ruleEngine.getRecycleStatus(detectedType, quality);
+            
+            // Tampilkan hasil
+            document.getElementById('resultPlaceholder').style.display = 'none';
+            document.getElementById('resultCard').style.display = 'block';
+
+            document.getElementById('resultMaterialName').textContent = data.name;
+            document.getElementById('resultMaterialType').textContent = data.material;
+            document.getElementById('resultMaterial').textContent = data.material;
+            document.getElementById('resultQuality').textContent = quality;
+            document.getElementById('resultWeight').textContent = `${weight} kg`;
+            document.getElementById('resultRecycle').textContent = recycle.percentage;
+            document.getElementById('resultPrice').textContent = `Rp ${valuation.total.toLocaleString()}`;
+            document.getElementById('resultCategory').textContent = valuation.category;
+            document.getElementById('resultPenyetor').textContent = name;
+
+            // NLP Info
+            document.getElementById('nlpAnalysisText').textContent = 
+                `NLP menganalisis: "${description}" → Deteksi: ${data.name} (${analysis.confidence}% confidence)`;
+
+            // Delivery
+            const deliveryLabel = deliveryOption === 'antar' ? '🚶 Antar Sendiri' : '🚚 Dijemput FC';
+            document.getElementById('resultDelivery').textContent = deliveryLabel;
+
+            if (deliveryOption === 'dijemput') {
+                const city = document.getElementById('wasteCity').value;
+                const ongkir = ongkirData[city] || 70000;
+                const address = document.getElementById('wasteAddress').value || '-';
+                
+                document.getElementById('resultAlamatRow').style.display = 'flex';
+                document.getElementById('resultAlamat').textContent = address;
+                document.getElementById('resultOngkirRow').style.display = 'flex';
+                if (ongkir === 0) {
+                    document.getElementById('resultOngkir').textContent = '✅ Gratis';
+                    document.getElementById('resultOngkir').style.color = '#55efc4';
+                } else {
+                    document.getElementById('resultOngkir').textContent = `Rp ${ongkir.toLocaleString()}`;
+                    document.getElementById('resultOngkir').style.color = 'var(--primary)';
+                }
+            } else {
+                document.getElementById('resultAlamatRow').style.display = 'none';
+                document.getElementById('resultOngkirRow').style.display = 'none';
+            }
+
+            // Produk rekomendasi
+            const recommendations = ruleEngine.getRecommendations(detectedType, weight);
+            const productContainer = document.getElementById('resultProducts');
+            productContainer.innerHTML = recommendations.map(p => `<span>🛍️ ${p}</span>`).join('');
+
+            // Simpan ke riwayat
+            const now = new Date();
+            const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+            const status = deliveryOption === 'antar' ? 'Selesai (Antar Sendiri)' : 'Menunggu Penjemputan';
+            const statusClass = deliveryOption === 'antar' ? 'selesai' : 'dijemput';
+            
+            const city = document.getElementById('wasteCity').value;
+            const ongkir = ongkirData[city] || 70000;
+            const ongkirText = ongkir === 0 ? 'Gratis' : `Rp ${ongkir.toLocaleString()}`;
+            const address = document.getElementById('wasteAddress').value || '-';
+
+            const record = {
+                tanggal,
+                penyetor: name,
+                jenis: data.name,
+                material: data.material,
+                berat: weight,
+                nilai: valuation.total,
+                produk: recommendations.join(', '),
+                pengiriman: deliveryOption === 'antar' ? 'Antar Sendiri' : 'Dijemput FC',
+                alamat: deliveryOption === 'dijemput' ? address : '-',
+                ongkir: ongkir,
+                ongkirText: ongkirText,
+                status: status,
+                statusClass: statusClass,
+                nlpConfidence: analysis.confidence,
+                deskripsi: description
+            };
+
+            riwayatSetoran.push(record);
+            localStorage.setItem('riwayatSetoran', JSON.stringify(riwayatSetoran));
+
+            // Update total waste
+            totalWaste += weight;
+            document.getElementById('totalWasteHero').textContent = totalWaste.toLocaleString();
+
+            renderRiwayat();
+            showToast(`✅ Setoran berhasil! ${data.name} - Rp ${valuation.total.toLocaleString()}`);
+        });
+
+        // =============================================
+        // 15. RIWAYAT
+        // =============================================
+        function renderRiwayat() {
+            const tbody = document.getElementById('riwayatBody');
+            const empty = document.getElementById('riwayatEmpty');
+
+            if (riwayatSetoran.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            tbody.innerHTML = riwayatSetoran.map(r => `
+                <tr>
+                    <td>${r.tanggal}</td>
+                    <td><strong>${r.penyetor}</strong></td>
+                    <td>${r.jenis}</td>
+                    <td>${r.berat} kg</td>
+                    <td style="color: var(--primary); font-weight: 600;">Rp ${r.nilai.toLocaleString()}</td>
+                    <td>${r.produk}</td>
+                    <td>${r.pengiriman}</td>
+                    <td>${r.ongkirText}</td>
+                    <td><span class="status-badge ${r.statusClass}">${r.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // =============================================
+        // 16. SMART WASTE SCAN (Hero Phone)
+        // =============================================
+        document.querySelectorAll('#wasteOptions button')?.forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#wasteOptions button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentWaste = btn.dataset.waste;
+            });
+        });
+
+        document.getElementById('scanBtn')?.addEventListener('click', () => {
+            const data = materialDB[currentWaste];
+            document.getElementById('scanType').textContent = data.name;
+            document.getElementById('scanMaterial').textContent = data.material;
+            document.getElementById('scanQuality').textContent = data.quality;
+            document.getElementById('scanRecycle').textContent = data.recycle;
+
+            document.getElementById('materialResult').textContent = data.name;
+            document.getElementById('valueResult').textContent = `Rp ${(data.pricePerKg * 5).toLocaleString()}`;
+
+            const items = document.querySelectorAll('#recommendContainer .item');
+            items.forEach((el, i) => {
+                el.classList.toggle('active', i < data.products.length);
+                if (i < data.products.length) {
+                    el.querySelector('i').className = 'fas fa-check-circle';
+                    el.querySelector('i').style.color = '#55efc4';
+                } else {
+                    el.querySelector('i').className = 'fas fa-circle';
+                    el.querySelector('i').style.color = 'rgba(255,255,255,0.2)';
+                }
+            });
+
+            showToast(`✅ Scan berhasil! Material: ${data.name}`);
+        });
+
+        document.getElementById('fileInput')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('scanText').textContent = `📷 ${file.name}`;
+                document.getElementById('scanIcon').className = 'fas fa-check-circle';
+                document.getElementById('scanIcon').style.color = '#55efc4';
+                showToast(`📸 Foto "${file.name}" berhasil diupload!`);
+                setTimeout(() => document.getElementById('scanBtn')?.click(), 500);
+            }
+        });
+
+        document.getElementById('scanArea')?.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        // =============================================
+        // 17. NLP ANALYSIS FEATURE
+        // =============================================
+        document.getElementById('nlpAnalyzeBtn')?.addEventListener('click', () => {
+            const text = document.getElementById('nlpTextInput').value;
+            if (text.trim().length < 2) {
+                showToast('⚠️ Tulis deskripsi limbah terlebih dahulu!');
+                return;
+            }
+            displayNLPResult(text);
+            showToast('🧠 NLP Analysis selesai!');
+        });
+
+        // Auto-analyze on enter
+        document.getElementById('nlpTextInput')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('nlpAnalyzeBtn').click();
+            }
+        });
+
+        // =============================================
+        // 18. RULE-BASED VALUATION
+        // =============================================
+        document.getElementById('ruleValuationBtn')?.addEventListener('click', () => {
+            const type = document.getElementById('ruleType').value;
+            const weight = parseFloat(document.getElementById('ruleWeight').value) || 1;
+            const quality = document.getElementById('ruleQuality').value;
+            
+            const result = ruleEngine.calculateValue(type, weight, quality);
+            const data = materialDB[type];
+            
+            document.getElementById('ruleResult').textContent = `Rp ${result.total.toLocaleString()}`;
+            document.getElementById('rulePerKg').textContent = `Rp ${result.perKg.toLocaleString()}/kg`;
+            document.getElementById('ruleCategory').textContent = result.category;
+            
+            showToast(`💰 Rule-Based: Rp ${result.total.toLocaleString()}`);
+        });
+
+        // =============================================
+        // 19. RULE-BASED RECOMMENDATION
+        // =============================================
+        document.getElementById('recBtn')?.addEventListener('click', () => {
+            const type = document.getElementById('recType').value;
+            const weight = parseFloat(document.getElementById('wasteWeight')?.value) || 5;
+            
+            const recommendations = ruleEngine.getRecommendations(type, weight);
+            const container = document.getElementById('recList');
+            
+            container.innerHTML = recommendations.map(p => `
+                <div class="result-item">
+                    <span>🛍️ ${p}</span>
+                    <span style="color:var(--primary);">★ ${(4 + Math.random() * 0.8).toFixed(1)}</span>
+                </div>
+            `).join('');
+            
+            showToast(`🤖 ${recommendations.length} rekomendasi produk!`);
+        });
+
+        // =============================================
+        // 20. MARKETPLACE
+        // =============================================
+        function renderProducts() {
+            let filtered = products;
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(p => p.category === currentFilter);
+            }
+            if (currentSearch.trim()) {
+                const q = currentSearch.toLowerCase().trim();
+                filtered = filtered.filter(p =>
+                    p.name.toLowerCase().includes(q) ||
+                    p.material.toLowerCase().includes(q) ||
+                    p.seller.toLowerCase().includes(q) ||
+                    p.wasteType.toLowerCase().includes(q)
+                );
+            }
+            document.getElementById('resultCount').textContent = `${filtered.length} produk`;
+
+            if (filtered.length === 0) {
+                document.getElementById('productsGrid').innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text-muted);">
+                        <i class="fas fa-search" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:16px;"></i>
+                        <h3 style="margin-bottom:8px;">Produk tidak ditemukan</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('productsGrid').innerHTML = filtered.map(p => {
+                const discount = Math.round((1 - p.price / p.originalPrice) * 100);
+                const stars = '★'.repeat(Math.floor(p.rating)) + (p.rating % 1 >= 0.5 ? '★' : '');
+                return `
+                <div class="product-card slide-up" data-id="${p.id}">
+                    <div class="product-image" style="background: linear-gradient(135deg, ${p.color}22, ${p.color}44);">
+                        <div class="product-bg" style="background: radial-gradient(circle at 30% 40%, ${p.color}44, transparent 70%);"></div>
+                        <div class="product-bg-pattern"></div>
+                        <div class="product-icon-wrap" style="border-color: ${p.color}66;">
+                            <i class="fas ${p.icon}" style="color: #fff; text-shadow: 0 4px 20px rgba(0,0,0,0.3);"></i>
+                        </div>
+                        <span class="material-badge">♻️ ${p.wasteType}</span>
+                        ${discount > 0 ? `<span class="discount-badge">-${discount}%</span>` : ''}
+                        <span class="waste-badge"><i class="fas fa-recycle"></i> Daur Ulang</span>
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-material"><i class="fas fa-leaf"></i> ${p.material}</div>
+                        <div class="product-rating">
+                            <span class="stars">${stars}</span>
+                            <span class="count">(${p.reviews})</span>
+                        </div>
+                        <div class="product-price">
+                            Rp ${p.price.toLocaleString()}
+                            <span class="original">Rp ${p.originalPrice.toLocaleString()}</span>
+                        </div>
+                        <div class="product-seller"><i class="fas fa-store"></i> ${p.seller}</div>
+                        <div class="product-actions">
+                            <button class="add-cart" onclick="addToCart(${p.id})"><i class="fas fa-plus"></i> Tambah</button>
+                            <button class="buy-now" onclick="buyNow(${p.id})"><i class="fas fa-bolt"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // =============================================
+        // 21. CART FUNCTIONS
+        // =============================================
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            const existing = cart.find(item => item.id === productId);
+            if (existing) { existing.qty += 1; } else { cart.push({ ...product, qty: 1 }); }
+            updateCartUI();
+            showToast(`🛍️ ${product.name} ditambahkan!`);
+            document.getElementById('cartSidebar').classList.add('active');
+            document.getElementById('cartOverlay').classList.add('active');
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartUI();
+        }
+
+        function updateQty(productId, delta) {
+            const item = cart.find(i => i.id === productId);
+            if (!item) return;
+            item.qty += delta;
+            if (item.qty <= 0) { removeFromCart(productId); } else { updateCartUI(); }
+        }
+
+        function buyNow(productId) { addToCart(productId);
+            showToast('🛒 Siap checkout!'); }
+
+        function updateCartUI() {
+            const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+            document.getElementById('cartCount').textContent = totalItems;
+
+            if (cart.length === 0) {
+                document.getElementById('cartItems').innerHTML =
+                    `<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Keranjang kosong</p></div>`;
+                document.getElementById('cartFooter').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('cartItems').innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="item-image" style="background:linear-gradient(135deg,${item.color}33,${item.color}11);">
+                        <i class="fas ${item.icon}" style="color:${item.color};"></i>
+                    </div>
+                    <div class="item-details">
+                        <h4>${item.name}</h4>
+                        <p>${item.material}</p>
+                        <span class="price">Rp ${(item.price * item.qty).toLocaleString()}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button onclick="updateQty(${item.id},-1)">−</button>
+                        <span class="qty">${item.qty}</span>
+                        <button onclick="updateQty(${item.id},1)">+</button>
+                        <button onclick="removeFromCart(${item.id})" style="color:#e17055;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('cartTotal').textContent = `Rp ${totalPrice.toLocaleString()}`;
+            document.getElementById('cartFooter').style.display = 'block';
+        }
+
+        // =============================================
+        // 22. CART TOGGLE
+        // =============================================
+        document.getElementById('cartToggle').addEventListener('click', () => {
+            document.getElementById('cartSidebar').classList.toggle('active');
+            document.getElementById('cartOverlay').classList.toggle('active');
+        });
+        document.getElementById('closeCart').addEventListener('click', () => {
+            document.getElementById('cartSidebar').classList.remove('active');
+            document.getElementById('cartOverlay').classList.remove('active');
+        });
+        document.getElementById('cartOverlay').addEventListener('click', () => {
+            document.getElementById('cartSidebar').classList.remove('active');
+            document.getElementById('cartOverlay').classList.remove('active');
+        });
+
+        // =============================================
+        // 23. CHECKOUT
+        // =============================================
+        document.getElementById('checkoutBtn').addEventListener('click', () => {
+            if (cart.length === 0) { showToast('⚠️ Keranjang kosong!'); return; }
+            const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+            showToast(`🎉 Terima kasih! Total Rp ${total.toLocaleString()} berhasil diproses! 🌊`);
+            cart = [];
+            updateCartUI();
+            setTimeout(() => {
+                document.getElementById('cartSidebar').classList.remove('active');
+                document.getElementById('cartOverlay').classList.remove('active');
+            }, 1000);
+        });
+
+        // =============================================
+        // 24. FILTER & SEARCH
+        // =============================================
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderProducts();
+            });
+        });
+
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            currentSearch = document.getElementById('searchInput').value;
+            renderProducts();
+        });
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                currentSearch = document.getElementById('searchInput').value;
+                renderProducts();
+            }
+        });
+
+        // =============================================
+        // 25. IMPACT TRACKER
+        // =============================================
+        document.querySelectorAll('.update-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = document.getElementById(btn.dataset.target);
+                const add = parseInt(btn.dataset.add);
+                const current = parseInt(target.textContent.replace(/[^0-9]/g, ''));
+                const newVal = current + add;
+                target.textContent = newVal.toLocaleString();
+                showToast(`📊 Dampak diperbarui! +${add}`);
+            });
+        });
+
+        // =============================================
+        // 26. INIT
+        // =============================================
+        renderProducts();
+        updateCartUI();
+        renderRiwayat();
+        document.getElementById('totalWasteHero').textContent = totalWaste.toLocaleString();
+        updateOngkir();
+
+        // Auto-analyze initial text
+        setTimeout(() => {
+            const initialText = document.getElementById('wasteDescription').value;
+            if (initialText.trim().length > 3) {
+                const analysis = analyzeWasteDescription(initialText);
+                if (analysis.detectedType) {
+                    const data = materialDB[analysis.detectedType];
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge success">
+                            <i class="fas fa-check-circle"></i> 
+                            Terdeteksi: ${data.name} (${analysis.confidence}% confidence)
+                        </span>
+                    `;
+                }
+            }
+        }, 500);
+
+        // Trigger scan on load
+        setTimeout(() => document.getElementById('scanBtn')?.click(), 800);
+
+        console.log('🧠 FashionCycle AI — NLP + Rule-Based Engine');
+        console.log('📝 NLP: Menganalisis teks deskripsi limbah');
+        console.log('⚖️ Rule-Based: Menentukan harga & rekomendasi berdasarkan aturan');
+        console.log('🌊 Coba tulis deskripsi limbah di form setor!');
+    </script>
+</body>
+</html>
