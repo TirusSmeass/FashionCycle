@@ -1675,7 +1675,7 @@
         };
 
         // =============================================
-        // 2. PRODUCT DATABASE DENGAN GAMBAR
+        // 2. PRODUCT DATABASE DENGAN GAMBAR (tanpa folder images/)
         // =============================================
         const products = [
             { id: 1, name: 'Eco Marine Tote Bag', material: 'Jaring Nelayan Nylon', category: 'tas', price: 185000,
@@ -1724,6 +1724,20 @@
         let currentSearch = '';
         let riwayatSetoran = JSON.parse(localStorage.getItem('riwayatSetoran')) || [];
         let totalWaste = riwayatSetoran.reduce((sum, item) => sum + item.berat, 0);
+        let currentWaste = 'jaring';
+        let deliveryOption = 'antar';
+
+        const ongkirData = {
+            jember: 0, jakarta: 0, bogor: 0, depok: 0, tangerang: 0, bekasi: 0,
+            bandung: 15000, surabaya: 35000, medan: 45000, 
+            makassar: 50000, bali: 55000, lainnya: 70000
+        };
+        const kotaLabels = {
+            jember: 'Jember', jakarta: 'Jakarta', bogor: 'Bogor', depok: 'Depok', 
+            tangerang: 'Tangerang', bekasi: 'Bekasi', bandung: 'Bandung',
+            surabaya: 'Surabaya', medan: 'Medan', makassar: 'Makassar',
+            bali: 'Bali', lainnya: 'Lainnya'
+        };
 
         // =============================================
         // 4. THEME TOGGLE
@@ -1780,7 +1794,480 @@
         }
 
         // =============================================
-        // 7. RENDER MARKETPLACE DENGAN GAMBAR
+        // 7. NLP ENGINE (Text Processing)
+        // =============================================
+        const nlpEngine = {
+            tokenize: function(text) {
+                return text.toLowerCase()
+                    .replace(/[^a-z0-9 ]/g, '')
+                    .split(' ')
+                    .filter(word => word.length > 0);
+            },
+
+            detectWasteType: function(text) {
+                const tokens = this.tokenize(text);
+                let scores = {};
+                for (let [type, data] of Object.entries(materialDB)) {
+                    let score = 0;
+                    for (let keyword of data.keywords) {
+                        if (text.toLowerCase().includes(keyword.toLowerCase())) {
+                            score += 10;
+                        }
+                        for (let token of tokens) {
+                            if (keyword.includes(token) && token.length > 2) {
+                                score += 5;
+                            }
+                            if (token.includes(keyword) && keyword.length > 2) {
+                                score += 3;
+                            }
+                        }
+                    }
+                    scores[type] = score;
+                }
+
+                let maxScore = 0;
+                let detectedType = null;
+                for (let [type, score] of Object.entries(scores)) {
+                    if (score > maxScore) {
+                        maxScore = score;
+                        detectedType = type;
+                    }
+                }
+
+                return {
+                    type: detectedType,
+                    confidence: Math.min(Math.round((maxScore / 50) * 100), 95),
+                    scores: scores
+                };
+            },
+
+            extractWeight: function(text) {
+                const patterns = [
+                    /(\d+[.,]?\d*)\s*(?:kg|kilogram|kg\.|kilo)/i,
+                    /(\d+[.,]?\d*)\s*kg/i,
+                    /berat\s*(\d+[.,]?\d*)/i,
+                    /(\d+[.,]?\d*)\s*kilogram/i
+                ];
+                for (let pattern of patterns) {
+                    const match = text.match(pattern);
+                    if (match) {
+                        return parseFloat(match[1].replace(',', '.'));
+                    }
+                }
+                return null;
+            },
+
+            extractQuality: function(text) {
+                const qualityKeywords = {
+                    'Premium': ['premium', 'excellent', 'sangat baik', 'grade a', 'kualitas tinggi'],
+                    'Baik': ['baik', 'bagus', 'good', 'grade b', 'kualitas baik'],
+                    'Sedang': ['sedang', 'medium', 'cukup', 'moderate'],
+                    'Rendah': ['rendah', 'low', 'buruk', 'jelek', 'rusak']
+                };
+
+                for (let [quality, keywords] of Object.entries(qualityKeywords)) {
+                    for (let keyword of keywords) {
+                        if (text.toLowerCase().includes(keyword)) {
+                            return quality;
+                        }
+                    }
+                }
+                return null;
+            },
+
+            analyze: function(text) {
+                const weight = this.extractWeight(text);
+                const quality = this.extractQuality(text) || 'Baik';
+                const detection = this.detectWasteType(text);
+                return {
+                    text: text,
+                    weight: weight,
+                    quality: quality,
+                    detectedType: detection.type,
+                    confidence: detection.confidence,
+                    scores: detection.scores
+                };
+            }
+        };
+
+        // =============================================
+        // 8. RULE-BASED ENGINE
+        // =============================================
+        const ruleEngine = {
+            calculateValue: function(type, weight, quality) {
+                const data = materialDB[type];
+                if (!data) return { total: 0, perKg: 0, category: 'Unknown' };
+
+                const basePrice = data.pricePerKg;
+                const qualityMultiplier = {
+                    'Premium': 1.5,
+                    'Baik': 1.0,
+                    'Sedang': 0.7,
+                    'Rendah': 0.4
+                };
+                const multiplier = qualityMultiplier[quality] || 1.0;
+
+                let discount = 0;
+                if (weight > 100) discount = 0.15;
+                else if (weight > 50) discount = 0.10;
+                else if (weight > 25) discount = 0.05;
+
+                let total = basePrice * weight * multiplier;
+                total = total - (total * discount);
+                if (total < 1000 && weight > 0) total = 1000;
+
+                return {
+                    total: Math.round(total),
+                    perKg: Math.round(basePrice * multiplier),
+                    category: data.category,
+                    discount: Math.round(discount * 100)
+                };
+            },
+
+            getRecommendations: function(type, weight) {
+                const data = materialDB[type];
+                if (!data) return [];
+                const products = data.products || [];
+                if (weight < 1) {
+                    return products.filter(p => 
+                        p.includes('Dompet') || 
+                        p.includes('Gelang') || 
+                        p.includes('Anting') ||
+                        p.includes('Perhiasan')
+                    );
+                } else if (weight < 5) {
+                    return products.filter(p => 
+                        p.includes('Tote') || 
+                        p.includes('Sling') || 
+                        p.includes('Dompet') ||
+                        p.includes('Tas Jinjing')
+                    );
+                } else {
+                    return products;
+                }
+            },
+
+            getRecycleStatus: function(type, quality) {
+                const data = materialDB[type];
+                if (!data) return { status: 'Tidak Diketahui', percentage: '0%' };
+
+                const recycleRates = {
+                    'Premium': 95,
+                    'Baik': 85,
+                    'Sedang': 70,
+                    'Rendah': 45
+                };
+                const percentage = recycleRates[quality] || 50;
+                let status = 'Layak Daur Ulang';
+                if (percentage < 50) status = 'Kurang Layak';
+                else if (percentage < 70) status = 'Cukup Layak';
+                return { status, percentage: `${percentage}%` };
+            }
+        };
+
+        // =============================================
+        // 9. NLP ANALYSIS FUNCTIONS
+        // =============================================
+        function analyzeWasteDescription(text) {
+            const result = nlpEngine.analyze(text);
+            if (!result.detectedType) {
+                result.detectedType = 'jaring';
+                result.confidence = 30;
+            }
+            return result;
+        }
+
+        function displayNLPResult(text) {
+            const analysis = analyzeWasteDescription(text);
+            const data = materialDB[analysis.detectedType];
+            if (!data) {
+                document.getElementById('nlpDetected').textContent = 'Tidak Terdeteksi';
+                document.getElementById('nlpMaterial').textContent = '-';
+                document.getElementById('nlpConfidence').textContent = '0%';
+                document.getElementById('nlpCategory').textContent = '-';
+                return;
+            }
+            document.getElementById('nlpDetected').textContent = data.name;
+            document.getElementById('nlpMaterial').textContent = data.material;
+            document.getElementById('nlpConfidence').textContent = `${analysis.confidence}%`;
+            document.getElementById('nlpCategory').textContent = data.category;
+        }
+
+        // =============================================
+        // 10. NLP SETOR LIMBAH
+        // =============================================
+        const wasteDescription = document.getElementById('wasteDescription');
+        const nlpDetectedBadge = document.getElementById('nlpDetectedBadge');
+
+        wasteDescription.addEventListener('input', function() {
+            const text = this.value;
+            if (text.trim().length > 3) {
+                const analysis = analyzeWasteDescription(text);
+                if (analysis.detectedType) {
+                    const data = materialDB[analysis.detectedType];
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge success">
+                            <i class="fas fa-check-circle"></i> 
+                            Terdeteksi: ${data.name} (${analysis.confidence}% confidence)
+                        </span>
+                    `;
+                    if (analysis.weight) {
+                        document.getElementById('wasteWeight').value = analysis.weight;
+                    }
+                } else {
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge warning">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            Tidak terdeteksi, coba deskripsi yang lebih jelas
+                        </span>
+                    `;
+                }
+            } else {
+                nlpDetectedBadge.innerHTML = '';
+            }
+        });
+
+        // =============================================
+        // 11. FILE UPLOAD
+        // =============================================
+        document.getElementById('fileUploadArea').addEventListener('click', () => {
+            document.getElementById('wasteFileInput').click();
+        });
+
+        document.getElementById('wasteFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `📷 ${file.name}`;
+                document.getElementById('fileName').style.color = 'var(--primary)';
+                showToast(`📸 Foto "${file.name}" berhasil diupload!`);
+            }
+        });
+
+        // =============================================
+        // 12. DELIVERY OPTIONS
+        // =============================================
+        const deliveryOpts = document.querySelectorAll('.delivery-opt');
+        const alamatSection = document.getElementById('alamatSection');
+        const ongkirDisplay = document.getElementById('ongkirDisplay');
+        const ongkirNote = document.getElementById('ongkirNote');
+
+        deliveryOpts.forEach(opt => {
+            opt.addEventListener('click', () => {
+                deliveryOpts.forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                deliveryOption = opt.dataset.opt;
+                if (deliveryOption === 'dijemput') {
+                    alamatSection.classList.add('show');
+                    updateOngkir();
+                } else {
+                    alamatSection.classList.remove('show');
+                }
+            });
+        });
+
+        document.getElementById('wasteCity').addEventListener('change', updateOngkir);
+
+        function updateOngkir() {
+            const city = document.getElementById('wasteCity').value;
+            const ongkir = ongkirData[city] || 70000;
+            const cityLabel = kotaLabels[city] || city;
+            if (ongkir === 0) {
+                ongkirDisplay.innerHTML = '✅ Gratis';
+                ongkirDisplay.style.color = '#55efc4';
+                ongkirNote.innerHTML = `<i class="fas fa-info-circle"></i> Gratis ongkir untuk wilayah Jember & Jabodetabek`;
+                document.getElementById('deliverySub').textContent = '✅ Gratis untuk Jember & Jabodetabek';
+            } else {
+                ongkirDisplay.textContent = `Rp ${ongkir.toLocaleString()}`;
+                ongkirDisplay.style.color = 'var(--primary)';
+                ongkirNote.innerHTML = `<i class="fas fa-info-circle"></i> Ongkir Rp ${ongkir.toLocaleString()} untuk wilayah ${cityLabel}`;
+                document.getElementById('deliverySub').textContent = `Rp ${ongkir.toLocaleString()} untuk luar kota`;
+            }
+        }
+
+        // =============================================
+        // 13. SUBMIT SETOR DENGAN NLP
+        // =============================================
+        document.getElementById('submitWasteBtn').addEventListener('click', () => {
+            const description = document.getElementById('wasteDescription').value;
+            const weight = parseFloat(document.getElementById('wasteWeight').value) || 1;
+            const name = document.getElementById('wasteName').value || 'Anonim';
+            const phone = document.getElementById('wastePhone').value || '-';
+            const file = document.getElementById('wasteFileInput').files[0];
+
+            if (!file) {
+                showToast('⚠️ Upload foto limbah terlebih dahulu!');
+                return;
+            }
+            if (description.trim().length < 3) {
+                showToast('⚠️ Tulis deskripsi limbah yang jelas!');
+                return;
+            }
+
+            const analysis = analyzeWasteDescription(description);
+            const detectedType = analysis.detectedType || 'jaring';
+            const data = materialDB[detectedType];
+            if (!data) {
+                showToast('⚠️ Jenis limbah tidak terdeteksi, coba deskripsi yang lebih jelas');
+                return;
+            }
+
+            const quality = analysis.quality || 'Baik';
+            const valuation = ruleEngine.calculateValue(detectedType, weight, quality);
+            const recycle = ruleEngine.getRecycleStatus(detectedType, quality);
+
+            document.getElementById('resultPlaceholder').style.display = 'none';
+            document.getElementById('resultCard').style.display = 'block';
+
+            document.getElementById('resultMaterialName').textContent = data.name;
+            document.getElementById('resultMaterialType').textContent = data.material;
+            document.getElementById('resultMaterial').textContent = data.material;
+            document.getElementById('resultQuality').textContent = quality;
+            document.getElementById('resultWeight').textContent = `${weight} kg`;
+            document.getElementById('resultRecycle').textContent = recycle.percentage;
+            document.getElementById('resultPrice').textContent = `Rp ${valuation.total.toLocaleString()}`;
+            document.getElementById('resultCategory').textContent = valuation.category;
+            document.getElementById('resultPenyetor').textContent = name;
+
+            document.getElementById('nlpAnalysisText').textContent = 
+                `NLP menganalisis: "${description}" → Deteksi: ${data.name} (${analysis.confidence}% confidence)`;
+
+            const deliveryLabel = deliveryOption === 'antar' ? '🚶 Antar Sendiri' : '🚚 Dijemput FC';
+            document.getElementById('resultDelivery').textContent = deliveryLabel;
+
+            if (deliveryOption === 'dijemput') {
+                const city = document.getElementById('wasteCity').value;
+                const ongkir = ongkirData[city] || 70000;
+                const address = document.getElementById('wasteAddress').value || '-';
+                document.getElementById('resultAlamatRow').style.display = 'flex';
+                document.getElementById('resultAlamat').textContent = address;
+                document.getElementById('resultOngkirRow').style.display = 'flex';
+                if (ongkir === 0) {
+                    document.getElementById('resultOngkir').textContent = '✅ Gratis';
+                    document.getElementById('resultOngkir').style.color = '#55efc4';
+                } else {
+                    document.getElementById('resultOngkir').textContent = `Rp ${ongkir.toLocaleString()}`;
+                    document.getElementById('resultOngkir').style.color = 'var(--primary)';
+                }
+            } else {
+                document.getElementById('resultAlamatRow').style.display = 'none';
+                document.getElementById('resultOngkirRow').style.display = 'none';
+            }
+
+            const recommendations = ruleEngine.getRecommendations(detectedType, weight);
+            const productContainer = document.getElementById('resultProducts');
+            productContainer.innerHTML = recommendations.map(p => `<span>🛍️ ${p}</span>`).join('');
+
+            const now = new Date();
+            const tanggal = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+            const status = deliveryOption === 'antar' ? 'Selesai (Antar Sendiri)' : 'Menunggu Penjemputan';
+            const statusClass = deliveryOption === 'antar' ? 'selesai' : 'dijemput';
+            const city = document.getElementById('wasteCity').value;
+            const ongkir = ongkirData[city] || 70000;
+            const ongkirText = ongkir === 0 ? 'Gratis' : `Rp ${ongkir.toLocaleString()}`;
+            const address = document.getElementById('wasteAddress').value || '-';
+
+            const record = {
+                tanggal, penyetor: name, jenis: data.name, material: data.material,
+                berat: weight, nilai: valuation.total, produk: recommendations.join(', '),
+                pengiriman: deliveryOption === 'antar' ? 'Antar Sendiri' : 'Dijemput FC',
+                alamat: deliveryOption === 'dijemput' ? address : '-',
+                ongkir: ongkir, ongkirText: ongkirText,
+                status: status, statusClass: statusClass,
+                nlpConfidence: analysis.confidence, deskripsi: description
+            };
+
+            riwayatSetoran.push(record);
+            localStorage.setItem('riwayatSetoran', JSON.stringify(riwayatSetoran));
+
+            totalWaste += weight;
+            document.getElementById('totalWasteHero').textContent = totalWaste.toLocaleString();
+
+            renderRiwayat();
+            showToast(`✅ Setoran berhasil! ${data.name} - Rp ${valuation.total.toLocaleString()}`);
+        });
+
+        // =============================================
+        // 14. RIWAYAT
+        // =============================================
+        function renderRiwayat() {
+            const tbody = document.getElementById('riwayatBody');
+            const empty = document.getElementById('riwayatEmpty');
+
+            if (riwayatSetoran.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            tbody.innerHTML = riwayatSetoran.map(r => `
+                <tr>
+                    <td>${r.tanggal}</td>
+                    <td><strong>${r.penyetor}</strong></td>
+                    <td>${r.jenis}</td>
+                    <td>${r.berat} kg</td>
+                    <td style="color: var(--primary); font-weight: 600;">Rp ${r.nilai.toLocaleString()}</td>
+                    <td>${r.produk}</td>
+                    <td>${r.pengiriman}</td>
+                    <td>${r.ongkirText}</td>
+                    <td><span class="status-badge ${r.statusClass}">${r.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // =============================================
+        // 15. NLP ANALYSIS FEATURE
+        // =============================================
+        document.getElementById('nlpAnalyzeBtn')?.addEventListener('click', () => {
+            const text = document.getElementById('nlpTextInput').value;
+            if (text.trim().length < 2) {
+                showToast('⚠️ Tulis deskripsi limbah terlebih dahulu!');
+                return;
+            }
+            displayNLPResult(text);
+            showToast('🧠 NLP Analysis selesai!');
+        });
+
+        document.getElementById('nlpTextInput')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('nlpAnalyzeBtn').click();
+            }
+        });
+
+        // =============================================
+        // 16. RULE-BASED VALUATION
+        // =============================================
+        document.getElementById('ruleValuationBtn')?.addEventListener('click', () => {
+            const type = document.getElementById('ruleType').value;
+            const weight = parseFloat(document.getElementById('ruleWeight').value) || 1;
+            const quality = document.getElementById('ruleQuality').value;
+            const result = ruleEngine.calculateValue(type, weight, quality);
+            document.getElementById('ruleResult').textContent = `Rp ${result.total.toLocaleString()}`;
+            document.getElementById('rulePerKg').textContent = `Rp ${result.perKg.toLocaleString()}/kg`;
+            document.getElementById('ruleCategory').textContent = result.category;
+            showToast(`💰 Rule-Based: Rp ${result.total.toLocaleString()}`);
+        });
+
+        // =============================================
+        // 17. RULE-BASED RECOMMENDATION
+        // =============================================
+        document.getElementById('recBtn')?.addEventListener('click', () => {
+            const type = document.getElementById('recType').value;
+            const weight = parseFloat(document.getElementById('wasteWeight')?.value) || 5;
+            const recommendations = ruleEngine.getRecommendations(type, weight);
+            const container = document.getElementById('recList');
+            container.innerHTML = recommendations.map(p => `
+                <div class="result-item">
+                    <span>🛍️ ${p}</span>
+                    <span style="color:var(--primary);">★ ${(4 + Math.random() * 0.8).toFixed(1)}</span>
+                </div>
+            `).join('');
+            showToast(`🤖 ${recommendations.length} rekomendasi produk!`);
+        });
+
+        // =============================================
+        // 18. RENDER MARKETPLACE DENGAN GAMBAR
         // =============================================
         function renderProducts() {
             let filtered = products;
@@ -1811,7 +2298,7 @@
             document.getElementById('productsGrid').innerHTML = filtered.map(p => {
                 const discount = Math.round((1 - p.price / p.originalPrice) * 100);
                 const stars = '★'.repeat(Math.floor(p.rating)) + (p.rating % 1 >= 0.5 ? '★' : '');
-                // Gunakan gambar dari path yang ditentukan, jika tidak ada gunakan placeholder
+                // Gunakan gambar dari path yang ditentukan (tanpa folder images/)
                 const imgSrc = p.image || `https://via.placeholder.com/300x300/00b894/ffffff?text=${encodeURIComponent(p.name)}`;
                 return `
                 <div class="product-card slide-up" data-id="${p.id}">
@@ -1844,7 +2331,7 @@
         }
 
         // =============================================
-        // 8. CART FUNCTIONS
+        // 19. CART FUNCTIONS
         // =============================================
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
@@ -1908,7 +2395,7 @@
         }
 
         // =============================================
-        // 9. CART TOGGLE
+        // 20. CART TOGGLE
         // =============================================
         document.getElementById('cartToggle').addEventListener('click', () => {
             document.getElementById('cartSidebar').classList.toggle('active');
@@ -1924,7 +2411,7 @@
         });
 
         // =============================================
-        // 10. CHECKOUT
+        // 21. CHECKOUT
         // =============================================
         document.getElementById('checkoutBtn').addEventListener('click', () => {
             if (cart.length === 0) { showToast('⚠️ Keranjang kosong!'); return; }
@@ -1939,7 +2426,7 @@
         });
 
         // =============================================
-        // 11. FILTER & SEARCH
+        // 22. FILTER & SEARCH
         // =============================================
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1962,7 +2449,7 @@
         });
 
         // =============================================
-        // 12. IMPACT TRACKER
+        // 23. IMPACT TRACKER
         // =============================================
         document.querySelectorAll('.update-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1976,20 +2463,35 @@
         });
 
         // =============================================
-        // 13. SETOR LIMBAH (NLP + RULE-BASED)
-        // =============================================
-        // ... (Saya singkatkan karena panjang, fungsinya sama seperti sebelumnya)
-
-        // =============================================
-        // 14. INIT
+        // 24. INIT
         // =============================================
         renderProducts();
         updateCartUI();
+        renderRiwayat();
         document.getElementById('totalWasteHero').textContent = totalWaste.toLocaleString();
+        updateOngkir();
 
-        console.log('🛍️ FashionCycle AI — Marketplace dengan Gambar Produk!');
-        console.log('📸 Gunakan file gambar: Jaket Eco Marine.jpeg, dll');
-        console.log('♻️ ' + products.length + ' produk fashion daur ulang siap dipesan!');
+        setTimeout(() => {
+            const initialText = document.getElementById('wasteDescription').value;
+            if (initialText.trim().length > 3) {
+                const analysis = analyzeWasteDescription(initialText);
+                if (analysis.detectedType) {
+                    const data = materialDB[analysis.detectedType];
+                    nlpDetectedBadge.innerHTML = `
+                        <span class="detected-badge success">
+                            <i class="fas fa-check-circle"></i> 
+                            Terdeteksi: ${data.name} (${analysis.confidence}% confidence)
+                        </span>
+                    `;
+                }
+            }
+        }, 500);
+
+        console.log('🧠 FashionCycle AI — NLP + Rule-Based Engine');
+        console.log('📝 NLP: Menganalisis teks deskripsi limbah');
+        console.log('⚖️ Rule-Based: Menentukan harga & rekomendasi berdasarkan aturan');
+        console.log('🌊 Coba tulis deskripsi limbah di form setor!');
+        console.log('🛍️ Marketplace dengan gambar produk (tanpa folder images/)');
     </script>
 </body>
 </html>
